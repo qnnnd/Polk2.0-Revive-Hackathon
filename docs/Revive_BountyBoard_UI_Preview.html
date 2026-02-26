@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Revive Bounty Board (Demo UI Preview)</title>
+  <style>
+    :root { --bg:#0b0d12; --card:#121625; --muted:#9aa4b2; --text:#e6eaf2; --line:#232a3d; --accent:#6ee7ff; }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(110,231,255,.18), transparent 60%),
+                  radial-gradient(900px 500px at 90% 10%, rgba(167,139,250,.16), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width:1100px; margin:0 auto; padding:24px; }
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      padding:16px 18px; border:1px solid var(--line); border-radius:18px; background:rgba(18,22,37,.8); backdrop-filter: blur(10px);
+      position:sticky; top:16px; z-index:20;
+    }
+    .brand{ display:flex; gap:12px; align-items:center; }
+    .logo{
+      width:36px; height:36px; border-radius:12px;
+      background: linear-gradient(135deg, rgba(110,231,255,.95), rgba(167,139,250,.95));
+      box-shadow: 0 10px 24px rgba(110,231,255,.14);
+    }
+    .brand h1{ font-size:14px; margin:0; letter-spacing:.3px; }
+    .brand p{ margin:0; font-size:12px; color:var(--muted); }
+    nav{ display:flex; gap:8px; flex-wrap:wrap; }
+    .tab{
+      padding:10px 12px; border:1px solid transparent; border-radius:12px; font-size:13px; color:var(--muted);
+      cursor:pointer; user-select:none;
+    }
+    .tab.active{ color:var(--text); border-color:rgba(110,231,255,.35); background:rgba(110,231,255,.08); }
+    .right{ display:flex; align-items:center; gap:10px; }
+    .pill{
+      padding:8px 10px; border:1px solid var(--line); border-radius:12px; font-size:12px; color:var(--muted);
+      background:rgba(0,0,0,.15);
+    }
+    .btn{
+      border:1px solid rgba(110,231,255,.35); background:rgba(110,231,255,.10); color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; font-size:13px;
+    }
+    .btn:hover{ border-color:rgba(110,231,255,.55); background:rgba(110,231,255,.14); }
+    .btn.secondary{
+      border-color:var(--line); background:rgba(18,22,37,.6); color:var(--text);
+    }
+    .btn.danger{
+      border-color:rgba(248,113,113,.45); background:rgba(248,113,113,.08);
+    }
+    main{ margin-top:18px; display:grid; grid-template-columns: 1fr; gap:16px; }
+    .grid2{ display:grid; grid-template-columns: 1.15fr .85fr; gap:16px; }
+    @media (max-width: 960px){ .grid2{ grid-template-columns:1fr; } header{ position:static; } }
+    .card{
+      border:1px solid var(--line); border-radius:18px; background:rgba(18,22,37,.72); backdrop-filter: blur(10px);
+      padding:16px;
+    }
+    .card h2{ margin:0 0 10px; font-size:14px; letter-spacing:.2px; }
+    .muted{ color:var(--muted); }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .spacer{ height:10px; }
+    .kpi{ display:flex; gap:10px; flex-wrap:wrap; }
+    .kpi .box{ flex:1; min-width:160px; border:1px solid var(--line); border-radius:16px; padding:12px; background:rgba(0,0,0,.12); }
+    .kpi .box .v{ font-size:18px; margin-top:6px; }
+    .filters{ display:flex; gap:10px; flex-wrap:wrap; }
+    input, select, textarea{
+      width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line);
+      background:rgba(0,0,0,.18); color:var(--text); outline:none;
+    }
+    textarea{ min-height:110px; resize:vertical; }
+    label{ font-size:12px; color:var(--muted); display:block; margin:10px 0 6px; }
+    .table{
+      width:100%; border-collapse:separate; border-spacing:0 10px;
+    }
+    .table th{ text-align:left; font-size:12px; color:var(--muted); font-weight:600; padding:0 10px 6px; }
+    .table td{
+      padding:12px 10px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:rgba(0,0,0,.10);
+      font-size:13px;
+    }
+    .table tr td:first-child{ border-left:1px solid var(--line); border-top-left-radius:14px; border-bottom-left-radius:14px; }
+    .table tr td:last-child{ border-right:1px solid var(--line); border-top-right-radius:14px; border-bottom-right-radius:14px; }
+    .tag{ font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+    .status{ font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid rgba(110,231,255,.35); background:rgba(110,231,255,.07); }
+    .status.submitted{ border-color:rgba(251,191,36,.40); background:rgba(251,191,36,.07); }
+    .status.claimed{ border-color:rgba(167,139,250,.35); background:rgba(167,139,250,.08); }
+    .status.accepted{ border-color:rgba(52,211,153,.35); background:rgba(52,211,153,.08); }
+    .status.created{ border-color:rgba(110,231,255,.25); }
+    .status.expired, .status.cancelled{ border-color:rgba(248,113,113,.40); background:rgba(248,113,113,.08); }
+    .link{ color: var(--accent); }
+    .split{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 720px){ .split{ grid-template-columns:1fr; } }
+    .toast{
+      position:fixed; right:16px; bottom:16px; max-width:360px;
+      padding:12px 12px; border-radius:14px; border:1px solid var(--line);
+      background:rgba(18,22,37,.92); color:var(--text); display:none;
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+    .small{ font-size:12px; }
+    .hint{ font-size:12px; color:var(--muted); line-height:1.5; }
+    .divider{ height:1px; background:var(--line); margin:14px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Revive Bounty Board</h1>
+          <p>任务发布 · 认领 · 提交 · 验收 · 自动发奖（UI 预览）</p>
+        </div>
+      </div>
+      <nav>
+        <div class="tab active" data-route="tasks">任务广场</div>
+        <div class="tab" data-route="create">发布任务</div>
+        <div class="tab" data-route="mine">我的任务</div>
+        <div class="tab" data-route="detail">任务详情</div>
+      </nav>
+      <div class="right">
+        <div class="pill" id="networkPill">Network: <span class="mono">Revive/EVM</span></div>
+        <button class="btn" id="connectBtn">连接钱包</button>
+      </div>
+    </header>
+
+    <!-- TASKS -->
+    <main id="view_tasks">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <h2>任务广场</h2>
+            <div class="hint">列表展示来自“链上事件/索引服务”的任务。此页面为 UI 预览：按钮会模拟状态流转。</div>
+          </div>
+          <div class="row">
+            <button class="btn secondary" id="seedBtn">生成示例数据</button>
+            <button class="btn" id="goCreateBtn">发布新任务</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="filters">
+          <div style="flex:1; min-width:220px;">
+            <label>关键词</label>
+            <input id="q" placeholder="搜索标题/标签（预览）" />
+          </div>
+          <div style="width:200px;">
+            <label>状态</label>
+            <select id="statusFilter">
+              <option value="all">全部</option>
+              <option value="Created">Created</option>
+              <option value="Claimed">Claimed</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Accepted">Accepted</option>
+            </select>
+          </div>
+          <div style="width:200px;">
+            <label>排序</label>
+            <select id="sort">
+              <option value="new">最新</option>
+              <option value="reward">奖励最高</option>
+              <option value="deadline">截止最近</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <table class="table" aria-label="tasks table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>标题</th>
+              <th>奖励</th>
+              <th>截止</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="taskRows"></tbody>
+        </table>
+        <div class="row" style="justify-content:space-between; margin-top:8px;">
+          <div class="muted small">分页：MVP 可按 taskId 范围分页；有 Indexer 可做更强搜索。</div>
+          <div class="row">
+            <button class="btn secondary" id="prevPage">上一页</button>
+            <div class="pill">Page <span id="pageNo">1</span></div>
+            <button class="btn secondary" id="nextPage">下一页</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>评审可见的亮点（演示口径）</h2>
+          <div class="hint">
+            <ul>
+              <li><span class="mono">Escrow</span>：发布任务即锁仓奖励，验收后自动支付。</li>
+              <li><span class="mono">State Machine</span>：Created → Claimed → Submitted → Accepted。</li>
+              <li><span class="mono">Events</span>：便于索引、统计信誉、复盘。</li>
+              <li><span class="mono">MetaURI</span>：大文本链下存储，上链只留 URI/Hash。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <h2>指标（预览）</h2>
+          <div class="kpi">
+            <div class="box">
+              <div class="muted small">总任务</div>
+              <div class="v" id="kpiTotal">0</div>
+            </div>
+            <div class="box">
+              <div class="muted small">进行中</div>
+              <div class="v" id="kpiActive">0</div>
+            </div>
+            <div class="box">
+              <div class="muted small">已发奖</div>
+              <div class="v" id="kpiPaid">0</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="hint">
+            实际实现：由合约事件 +（可选）Indexer 统计。此处仅 UI 预览。
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- CREATE -->
+    <main id="view_create" style="display:none;">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <h2>发布任务</h2>
+            <div class="hint">MVP：meta 先存 IPFS/后端，合约只保存 <span class="mono">metaURI</span> 并锁仓奖励。</div>
+          </div>
+          <button class="btn secondary" id="backToTasks1">返回列表</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="split">
+          <div>
+            <label>标题</label>
+            <input id="c_title" placeholder="例如：制作产品落地页" />
+          </div>
+          <div>
+            <label>标签（逗号分隔）</label>
+            <input id="c_tags" placeholder="frontend, react" />
+          </div>
+        </div>
+
+        <label>描述</label>
+        <textarea id="c_desc" placeholder="清晰描述交付物、验收标准、资源链接..."></textarea>
+
+        <div class="split">
+          <div>
+            <label>奖励（Native）</label>
+            <input id="c_reward" type="number" min="0" step="0.0001" placeholder="例如：1.0" />
+          </div>
+          <div>
+            <label>截止时间（小时后）</label>
+            <input id="c_deadline" type="number" min="1" step="1" placeholder="例如：48" />
+          </div>
+        </div>
+
+        <label>MetaURI（预览：自动生成）</label>
+        <input id="c_meta" class="mono" placeholder="ipfs://... 或 https://..." />
+
+        <div class="row" style="margin-top:14px; justify-content:flex-end;">
+          <button class="btn secondary" id="fillExample">填充示例</button>
+          <button class="btn" id="createTaskBtn">创建任务（模拟上链）</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- MINE -->
+    <main id="view_mine" style="display:none;">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <h2>我的任务</h2>
+            <div class="hint">实际实现：按地址过滤事件/索引。此处为 UI 预览。</div>
+          </div>
+          <button class="btn secondary" id="backToTasks2">返回列表</button>
+        </div>
+        <div class="divider"></div>
+        <div class="grid2">
+          <div class="card" style="padding:14px;">
+            <h2>我发布的</h2>
+            <div id="mineCreated" class="hint">暂无</div>
+          </div>
+          <div class="card" style="padding:14px;">
+            <h2>我认领的</h2>
+            <div id="mineClaimed" class="hint">暂无</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- DETAIL -->
+    <main id="view_detail" style="display:none;">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <h2>任务详情</h2>
+            <div class="hint">根据角色与状态显示操作：认领 / 提交 / 验收 / 取消 / 过期处理。</div>
+          </div>
+          <div class="row">
+            <button class="btn secondary" id="backToTasks3">返回列表</button>
+            <button class="btn secondary" id="nextDetail">下一个任务</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div id="detailBox"></div>
+      </div>
+    </main>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---------- Demo State (mock) ----------
+    const state = {
+      address: null,
+      page: 1,
+      pageSize: 6,
+      tasks: [],
+      detailId: null,
+    };
+
+    const fmt = (n) => (Number.isFinite(n) ? n.toFixed(4).replace(/\.?0+$/,'') : String(n));
+    const now = () => Date.now();
+
+    function toast(msg){
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(()=> el.style.display = 'none', 2200);
+    }
+
+    function shortAddr(a){
+      if(!a) return '—';
+      return a.slice(0,6) + '…' + a.slice(-4);
+    }
+
+    function statusPill(s){
+      const cls = (s||'').toLowerCase();
+      return `<span class="status ${cls}">${s}</span>`;
+    }
+
+    function seed(){
+      const base = now();
+      state.tasks = [
+        {id: 1, title:'制作产品落地页', tags:['frontend','react'], reward: 1.2, deadlineAt: base + 36*3600e3, status:'Created', creator:'0xA1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', worker:null, metaURI:'ipfs://demo/meta/1', deliverableURI:'', deliverableHash:''},
+        {id: 2, title:'写一份 API 文档', tags:['docs'], reward: 0.6, deadlineAt: base + 18*3600e3, status:'Claimed', creator:'0xA1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', worker:'0xBEEF00000000000000000000000000000000BEEF', metaURI:'ipfs://demo/meta/2', deliverableURI:'', deliverableHash:''},
+        {id: 3, title:'提交一个 Logo 设计', tags:['design'], reward: 0.9, deadlineAt: base + 8*3600e3, status:'Submitted', creator:'0xC0ffee0000000000000000000000000000C0ffee', worker:'0xBEEF00000000000000000000000000000000BEEF', metaURI:'ipfs://demo/meta/3', deliverableURI:'https://example.com/logo.png', deliverableHash:'0x'+'a'.repeat(64)},
+        {id: 4, title:'实现合约单测用例', tags:['solidity','test'], reward: 1.8, deadlineAt: base + 60*3600e3, status:'Accepted', creator:'0xC0ffee0000000000000000000000000000C0ffee', worker:'0xD00D00000000000000000000000000000000D00D', metaURI:'ipfs://demo/meta/4', deliverableURI:'https://github.com/example/repo', deliverableHash:'0x'+'b'.repeat(64)},
+        {id: 5, title:'整理黑客松提交流程', tags:['ops'], reward: 0.3, deadlineAt: base + 12*3600e3, status:'Created', creator:'0xA1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', worker:null, metaURI:'ipfs://demo/meta/5', deliverableURI:'', deliverableHash:''},
+        {id: 6, title:'生成演示视频脚本', tags:['demo'], reward: 0.4, deadlineAt: base + 24*3600e3, status:'Created', creator:'0xC0ffee0000000000000000000000000000C0ffee', worker:null, metaURI:'ipfs://demo/meta/6', deliverableURI:'', deliverableHash:''},
+        {id: 7, title:'检查 UI 文案一致性', tags:['ux'], reward: 0.2, deadlineAt: base + 16*3600e3, status:'Claimed', creator:'0xA1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', worker:'0xD00D00000000000000000000000000000000D00D', metaURI:'ipfs://demo/meta/7', deliverableURI:'', deliverableHash:''},
+      ];
+      state.detailId = 1;
+      renderAll();
+      toast('已生成示例任务（UI 预览）');
+    }
+
+    function computeKpi(){
+      const total = state.tasks.length;
+      const active = state.tasks.filter(t=>['Created','Claimed','Submitted'].includes(t.status)).length;
+      const paid = state.tasks.filter(t=>t.status==='Accepted').length;
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiActive').textContent = active;
+      document.getElementById('kpiPaid').textContent = paid;
+    }
+
+    function filteredTasks(){
+      const q = (document.getElementById('q').value || '').trim().toLowerCase();
+      const st = document.getElementById('statusFilter').value;
+      const sort = document.getElementById('sort').value;
+
+      let list = [...state.tasks];
+      if(q){
+        list = list.filter(t =>
+          t.title.toLowerCase().includes(q) ||
+          (t.tags||[]).some(x => x.toLowerCase().includes(q))
+        );
+      }
+      if(st !== 'all'){
+        list = list.filter(t => t.status === st);
+      }
+      if(sort === 'reward'){
+        list.sort((a,b)=> (b.reward||0)-(a.reward||0));
+      } else if(sort === 'deadline'){
+        list.sort((a,b)=> (a.deadlineAt||0)-(b.deadlineAt||0));
+      } else {
+        list.sort((a,b)=> (b.id||0)-(a.id||0));
+      }
+      return list;
+    }
+
+    function renderTable(){
+      const tbody = document.getElementById('taskRows');
+      const list = filteredTasks();
+      const start = (state.page-1)*state.pageSize;
+      const pageItems = list.slice(start, start+state.pageSize);
+
+      tbody.innerHTML = pageItems.map(t=>{
+        const deadline = new Date(t.deadlineAt).toLocaleString('zh-CN', {hour12:false});
+        const tags = (t.tags||[]).slice(0,2).map(x=>`<span class="tag">${x}</span>`).join(' ');
+        let action = '';
+        if(t.status === 'Created') action = `<button class="btn" data-act="claim" data-id="${t.id}">认领</button>`;
+        else if(t.status === 'Claimed') action = `<button class="btn" data-act="submit" data-id="${t.id}">提交</button>`;
+        else if(t.status === 'Submitted') action = `<button class="btn" data-act="accept" data-id="${t.id}">验收</button>`;
+        else action = `<button class="btn secondary" data-act="view" data-id="${t.id}">查看</button>`;
+
+        return `
+          <tr>
+            <td class="mono">#${t.id}</td>
+            <td>
+              <div class="row" style="gap:8px;">
+                <a class="link" href="#" data-act="view" data-id="${t.id}">${t.title}</a>
+                ${tags}
+              </div>
+              <div class="muted small">发布者：<span class="mono">${shortAddr(t.creator)}</span></div>
+            </td>
+            <td><span class="mono">${fmt(t.reward)} NATIVE</span></td>
+            <td class="muted">${deadline}</td>
+            <td>${statusPill(t.status)}</td>
+            <td>${action}</td>
+          </tr>
+        `;
+      }).join('') || `<tr><td colspan="6" class="muted">暂无数据（点击“生成示例数据”）</td></tr>`;
+
+      document.getElementById('pageNo').textContent = state.page;
+      computeKpi();
+    }
+
+    function renderMine(){
+      const addr = state.address;
+      const mineCreated = document.getElementById('mineCreated');
+      const mineClaimed = document.getElementById('mineClaimed');
+
+      if(!addr){
+        mineCreated.innerHTML = '未连接钱包';
+        mineClaimed.innerHTML = '未连接钱包';
+        return;
+      }
+
+      const created = state.tasks.filter(t => t.creator === addr);
+      const claimed = state.tasks.filter(t => t.worker === addr);
+
+      mineCreated.innerHTML = created.length ? created.map(t => `<div>• <a class="link" href="#" data-act="view" data-id="${t.id}">#${t.id} ${t.title}</a> ${statusPill(t.status)}</div>`).join('') : '暂无';
+      mineClaimed.innerHTML = claimed.length ? claimed.map(t => `<div>• <a class="link" href="#" data-act="view" data-id="${t.id}">#${t.id} ${t.title}</a> ${statusPill(t.status)}</div>`).join('') : '暂无';
+    }
+
+    function renderDetail(){
+      const box = document.getElementById('detailBox');
+      const id = state.detailId;
+      const t = state.tasks.find(x=>x.id===id);
+      if(!t){
+        box.innerHTML = `<div class="muted">请选择任务</div>`;
+        return;
+      }
+      const deadline = new Date(t.deadlineAt).toLocaleString('zh-CN', {hour12:false});
+      const isCreator = state.address && state.address === t.creator;
+      const isWorker = state.address && state.address === t.worker;
+
+      let actions = '';
+      if(t.status === 'Created'){
+        actions = isCreator
+          ? `<button class="btn danger" data-act="cancel" data-id="${t.id}">取消任务</button>`
+          : `<button class="btn" data-act="claim" data-id="${t.id}">认领任务</button>`;
+      } else if(t.status === 'Claimed'){
+        actions = isWorker
+          ? `<button class="btn" data-act="submit" data-id="${t.id}">提交交付物</button>`
+          : `<button class="btn secondary" data-act="view" data-id="${t.id}">等待提交</button>`;
+      } else if(t.status === 'Submitted'){
+        actions = isCreator
+          ? `<button class="btn" data-act="accept" data-id="${t.id}">验收并发奖</button>
+             <button class="btn secondary" data-act="reject" data-id="${t.id}">拒绝（预览）</button>`
+          : `<button class="btn secondary" data-act="view" data-id="${t.id}">等待验收</button>`;
+      } else {
+        actions = `<button class="btn secondary" data-act="view" data-id="${t.id}">已结束</button>`;
+      }
+
+      box.innerHTML = `
+        <div class="grid2">
+          <div class="card" style="padding:14px;">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <div class="muted small">Task ID</div>
+                <div class="mono" style="font-size:18px;">#${t.id}</div>
+              </div>
+              ${statusPill(t.status)}
+            </div>
+            <div class="spacer"></div>
+            <div style="font-size:16px; font-weight:650;">${t.title}</div>
+            <div class="spacer"></div>
+            <div class="row" style="gap:8px;">
+              ${(t.tags||[]).map(x=>`<span class="tag">${x}</span>`).join('')}
+            </div>
+            <div class="divider"></div>
+            <div class="hint">
+              <div><span class="muted">奖励：</span><span class="mono">${fmt(t.reward)} NATIVE</span></div>
+              <div><span class="muted">截止：</span>${deadline}</div>
+              <div><span class="muted">发布者：</span><span class="mono">${t.creator}</span></div>
+              <div><span class="muted">认领者：</span><span class="mono">${t.worker ? t.worker : '—'}</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="row" style="justify-content:flex-end;">
+              ${actions}
+            </div>
+          </div>
+
+          <div class="card" style="padding:14px;">
+            <h2>元数据 / 交付物</h2>
+            <div class="hint">
+              <div><span class="muted">MetaURI：</span> <span class="mono">${t.metaURI}</span></div>
+              <div class="spacer"></div>
+              <div><span class="muted">DeliverableURI：</span> ${t.deliverableURI ? `<a class="link" href="${t.deliverableURI}" target="_blank" rel="noreferrer">${t.deliverableURI}</a>` : '—'}</div>
+              <div><span class="muted">DeliverableHash：</span> <span class="mono">${t.deliverableHash || '—'}</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="hint">
+              实际实现：提交时写入 <span class="mono">deliverableURI</span> 与 <span class="mono">deliverableHash</span>，并 emit <span class="mono">TaskSubmitted</span> 事件。
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAll(){
+      renderTable();
+      renderMine();
+      renderDetail();
+    }
+
+    // ---------- Routing ----------
+    const routes = ['tasks','create','mine','detail'];
+    function go(route){
+      routes.forEach(r=>{
+        document.getElementById('view_'+r).style.display = (r===route) ? '' : 'none';
+        document.querySelectorAll('.tab').forEach(t=>{
+          t.classList.toggle('active', t.dataset.route === route);
+        });
+      });
+      if(route==='tasks') renderTable();
+      if(route==='mine') renderMine();
+      if(route==='detail') renderDetail();
+    }
+
+    // ---------- Actions (mock state transitions) ----------
+    function requireWallet(){
+      if(!state.address){
+        toast('请先连接钱包（预览：会生成一个地址）');
+        return false;
+      }
+      return true;
+    }
+
+    function actClaim(id){
+      if(!requireWallet()) return;
+      const t = state.tasks.find(x=>x.id===id);
+      if(!t || t.status!=='Created') return;
+      t.worker = state.address;
+      t.status = 'Claimed';
+      toast(`已认领任务 #${id}（模拟）`);
+      state.detailId = id;
+      renderAll();
+      go('detail');
+    }
+
+    function actSubmit(id){
+      if(!requireWallet()) return;
+      const t = state.tasks.find(x=>x.id===id);
+      if(!t || t.status!=='Claimed') return;
+      if(t.worker !== state.address){
+        toast('仅认领者可提交（预览）');
+        return;
+      }
+      t.deliverableURI = 'https://example.com/deliverable/' + id;
+      t.deliverableHash = '0x' + 'c'.repeat(64);
+      t.status = 'Submitted';
+      toast(`已提交交付物 #${id}（模拟）`);
+      state.detailId = id;
+      renderAll();
+      go('detail');
+    }
+
+    function actAccept(id){
+      if(!requireWallet()) return;
+      const t = state.tasks.find(x=>x.id===id);
+      if(!t || t.status!=='Submitted') return;
+      if(t.creator !== state.address){
+        toast('仅发布者可验收（预览）');
+        return;
+      }
+      t.status = 'Accepted';
+      toast(`已验收并发奖 #${id}（模拟）`);
+      state.detailId = id;
+      renderAll();
+      go('detail');
+    }
+
+    function actCancel(id){
+      if(!requireWallet()) return;
+      const t = state.tasks.find(x=>x.id===id);
+      if(!t || t.status!=='Created') return;
+      if(t.creator !== state.address){
+        toast('仅发布者可取消（预览）');
+        return;
+      }
+      t.status = 'Cancelled';
+      toast(`已取消任务 #${id}（模拟）`);
+      renderAll();
+      go('detail');
+    }
+
+    function actReject(id){
+      toast('拒绝（预览）：实际实现可进入 Disputed 仲裁或允许重新提交');
+    }
+
+    function actView(id){
+      state.detailId = id;
+      renderDetail();
+      go('detail');
+    }
+
+    // ---------- Wire UI ----------
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', ()=> go(t.dataset.route)));
+    document.getElementById('seedBtn').addEventListener('click', seed);
+    document.getElementById('seedBtn').click(); // auto seed for preview
+
+    document.getElementById('goCreateBtn').addEventListener('click', ()=> go('create'));
+    document.getElementById('backToTasks1').addEventListener('click', ()=> go('tasks'));
+    document.getElementById('backToTasks2').addEventListener('click', ()=> go('tasks'));
+    document.getElementById('backToTasks3').addEventListener('click', ()=> go('tasks'));
+
+    document.getElementById('fillExample').addEventListener('click', ()=>{
+      document.getElementById('c_title').value = '撰写产品介绍文档（含验收标准）';
+      document.getElementById('c_tags').value = 'docs,writing';
+      document.getElementById('c_desc').value = '交付物：一份 Markdown 文档，包含功能说明、API 列表、边界与风险。验收：结构清晰、可直接交给开发使用。';
+      document.getElementById('c_reward').value = '0.8';
+      document.getElementById('c_deadline').value = '24';
+      document.getElementById('c_meta').value = 'ipfs://demo/meta/new';
+    });
+
+    document.getElementById('createTaskBtn').addEventListener('click', ()=>{
+      if(!requireWallet()) return;
+      const title = (document.getElementById('c_title').value||'').trim();
+      const tags = (document.getElementById('c_tags').value||'').split(',').map(x=>x.trim()).filter(Boolean);
+      const reward = parseFloat(document.getElementById('c_reward').value||'0') || 0;
+      const deadlineH = parseInt(document.getElementById('c_deadline').value||'0',10) || 0;
+      const metaURI = (document.getElementById('c_meta').value||'').trim() || 'ipfs://demo/meta/auto';
+
+      if(!title || reward<=0 || deadlineH<=0){
+        toast('请填写：标题、奖励、截止时间（预览）');
+        return;
+      }
+      const newId = (state.tasks.reduce((m,t)=>Math.max(m,t.id),0) || 0) + 1;
+      state.tasks.unshift({
+        id:newId, title, tags, reward,
+        deadlineAt: now() + deadlineH*3600e3,
+        status:'Created',
+        creator: state.address,
+        worker:null,
+        metaURI,
+        deliverableURI:'',
+        deliverableHash:''
+      });
+      toast(`已创建任务 #${newId}（模拟上链）`);
+      state.detailId = newId;
+      renderAll();
+      go('detail');
+    });
+
+    document.getElementById('connectBtn').addEventListener('click', async ()=>{
+      // Preview behavior: generate a pseudo address (no real wallet integration in static HTML)
+      if(!state.address){
+        const rand = () => Math.floor(Math.random()*16).toString(16);
+        let a = '0x';
+        for(let i=0;i<40;i++) a += rand();
+        state.address = a;
+        document.getElementById('connectBtn').textContent = shortAddr(a);
+        toast('已连接（预览：模拟地址）');
+        renderAll();
+      } else {
+        state.address = null;
+        document.getElementById('connectBtn').textContent = '连接钱包';
+        toast('已断开（预览）');
+        renderAll();
+      }
+    });
+
+    document.getElementById('q').addEventListener('input', ()=> { state.page=1; renderTable(); });
+    document.getElementById('statusFilter').addEventListener('change', ()=> { state.page=1; renderTable(); });
+    document.getElementById('sort').addEventListener('change', ()=> { state.page=1; renderTable(); });
+
+    document.getElementById('prevPage').addEventListener('click', ()=>{
+      state.page = Math.max(1, state.page-1);
+      renderTable();
+    });
+    document.getElementById('nextPage').addEventListener('click', ()=>{
+      const total = filteredTasks().length;
+      const maxPage = Math.max(1, Math.ceil(total/state.pageSize));
+      state.page = Math.min(maxPage, state.page+1);
+      renderTable();
+    });
+
+    document.getElementById('nextDetail').addEventListener('click', ()=>{
+      const ids = state.tasks.map(t=>t.id).sort((a,b)=>a-b);
+      const idx = ids.indexOf(state.detailId);
+      const next = ids[(idx+1) % ids.length];
+      state.detailId = next;
+      renderDetail();
+      go('detail');
+    });
+
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-act]');
+      if(!btn) return;
+      e.preventDefault();
+      const act = btn.dataset.act;
+      const id = parseInt(btn.dataset.id,10);
+      if(act==='claim') return actClaim(id);
+      if(act==='submit') return actSubmit(id);
+      if(act==='accept') return actAccept(id);
+      if(act==='cancel') return actCancel(id);
+      if(act==='reject') return actReject(id);
+      if(act==='view') return actView(id);
+    });
+
+    // Init
+    go('tasks');
+  </script>
+</body>
+</html>
