@@ -3,10 +3,11 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
 interface ToastCtx {
-  show: (m: string) => void;
+  show: (message: string) => void;
 }
 
-const Ctx = createContext<ToastCtx>({ show: () => {} });
+const noop = (): void => { /* default */ };
+const Ctx = createContext<ToastCtx>({ show: noop });
 export const useToast = () => useContext(Ctx);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
