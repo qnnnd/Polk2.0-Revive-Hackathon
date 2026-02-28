@@ -1,0 +1,18 @@
+{
+  "name": "revive-bounty-board",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "cd contracts && pnpm install && cd ../frontend && pnpm install",
+    "dev:local": "make dev",
+    "contracts:compile": "cd contracts && npx hardhat compile",
+    "contracts:test": "cd contracts && npx hardhat test",
+    "contracts:node": "cd contracts && npx hardhat node",
+    "contracts:deploy": "cd contracts && npx hardhat run scripts/deploy.ts --network localhost",
+    "contracts:smoke": "cd contracts && npx hardhat run scripts/smoke.ts --network localhost",
+    "contracts:seed": "cd contracts && npx hardhat run scripts/seed.ts --network localhost",
+    "frontend:dev": "cd frontend && pnpm dev",
+    "frontend:build": "cd frontend && pnpm build",
+    "frontend:lint": "cd frontend && pnpm lint"
+  }
+}

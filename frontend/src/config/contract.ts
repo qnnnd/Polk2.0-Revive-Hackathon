@@ -163,7 +163,24 @@ export const BOUNTY_BOARD_ABI = [
   {
     type: "event",
     name: "WorkRejected",
-    inputs: [{ name: "taskId", type: "uint256", indexed: true }],
+    inputs: [
+      { name: "taskId", type: "uint256", indexed: true },
+      { name: "rejectCount", type: "uint8", indexed: false },
+    ],
+  },
+  {
+    type: "function",
+    name: "rejectCount",
+    inputs: [{ name: "taskId", type: "uint256" }],
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "MAX_RESUBMIT",
+    inputs: [],
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
   },
 ] as const;
 

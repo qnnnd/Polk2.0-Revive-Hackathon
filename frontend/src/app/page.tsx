@@ -2,14 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useReadContract, useReadContracts } from "wagmi";
 import { formatEther } from "viem";
-import {
-  BOUNTY_BOARD_ADDRESS,
-  BOUNTY_BOARD_ABI,
-  STATUS_LABELS,
-  parseMetaURI,
-} from "@/config/contract";
+import { STATUS_LABELS } from "@/config/contract";
+import { useEventIndexer } from "@/hooks/useEventIndexer";
 import StatusBadge from "@/components/StatusBadge";
 
 export default function TasksPage() {
@@ -17,51 +12,9 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("new");
   const [page, setPage] = useState(1);
-  const pageSize = 8;
+  const pageSize = 10;
 
-  const { data: totalRaw } = useReadContract({
-    address: BOUNTY_BOARD_ADDRESS,
-    abi: BOUNTY_BOARD_ABI,
-    functionName: "totalTasks",
-    query: { refetchInterval: 5000 },
-  });
-
-  const total = Number(totalRaw ?? 0);
-
-  const { data: rawTasks } = useReadContracts({
-    contracts: Array.from({ length: total }, (_, i) => ({
-      address: BOUNTY_BOARD_ADDRESS,
-      abi: BOUNTY_BOARD_ABI,
-      functionName: "getTask",
-      args: [BigInt(i)],
-    })) as any[],
-    query: { enabled: total > 0, refetchInterval: 5000 },
-  });
-
-  const tasks = useMemo(() => {
-    if (!rawTasks) return [];
-    return rawTasks
-      .map((r, i) => {
-        if (r.status !== "success" || !r.result) return null;
-        const t = r.result as any;
-        const meta = parseMetaURI(t.metaURI);
-        return {
-          id: i,
-          creator: t.creator,
-          worker: t.worker,
-          reward: t.reward,
-          createdAt: Number(t.createdAt),
-          deadline: Number(t.deadline),
-          submitAt: Number(t.submitAt),
-          status: Number(t.status),
-          metaURI: t.metaURI,
-          deliverableHash: t.deliverableHash,
-          deliverableURI: t.deliverableURI,
-          meta,
-        };
-      })
-      .filter(Boolean) as any[];
-  }, [rawTasks]);
+  const { tasks, loading, lastSyncBlock, clearCache } = useEventIndexer();
 
   const filtered = useMemo(() => {
     let list = [...tasks];
@@ -107,15 +60,23 @@ export default function TasksPage() {
           <div>
             <h2 className="text-sm font-semibold">任务广场</h2>
             <p className="text-xs text-muted">
-              链上任务列表，数据实时读取自 BountyBoard 合约。
+              {loading ? "正在从链上事件同步..." : `事件驱动索引 · 已同步至区块 #${lastSyncBlock}`}
             </p>
           </div>
-          <Link
-            href="/create"
-            className="rounded-xl border border-accent/35 bg-accent/10 px-3 py-2 text-sm text-white transition hover:bg-accent/20"
-          >
-            发布新任务
-          </Link>
+          <div className="flex gap-2">
+            <button
+              onClick={clearCache}
+              className="rounded-xl border border-line bg-card/60 px-3 py-2 text-xs text-muted hover:text-white"
+            >
+              清除缓存
+            </button>
+            <Link
+              href="/create"
+              className="rounded-xl border border-accent/35 bg-accent/10 px-3 py-2 text-sm text-white transition hover:bg-accent/20"
+            >
+              发布新任务
+            </Link>
+          </div>
         </div>
 
         <div className="my-4 h-px bg-line" />
@@ -127,27 +88,14 @@ export default function TasksPage() {
             <input
               placeholder="搜索标题/标签"
               value={keyword}
-              onChange={(e) => {
-                setKeyword(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => { setKeyword(e.target.value); setPage(1); }}
             />
           </div>
           <div className="w-[180px]">
             <label className="mb-1 block text-xs text-muted">状态</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-            >
+            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
               <option value="all">全部</option>
-              {STATUS_LABELS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
+              {STATUS_LABELS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="w-[180px]">
@@ -174,55 +122,39 @@ export default function TasksPage() {
               </tr>
             </thead>
             <tbody>
-              {pageItems.length === 0 ? (
+              {loading ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-6 text-center text-muted">
-                    {total === 0
-                      ? "暂无任务 — 去发布第一个任务吧！"
-                      : "无匹配任务"}
+                    ⏳ 正在从链上事件同步任务...
+                  </td>
+                </tr>
+              ) : pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-muted">
+                    {tasks.length === 0 ? "暂无任务 — 去发布第一个任务吧！" : "无匹配任务"}
                   </td>
                 </tr>
               ) : (
                 pageItems.map((t) => (
                   <tr key={t.id}>
-                    <td className="rounded-l-xl border-y border-l border-line bg-black/10 px-3 py-3 font-mono text-sm">
-                      #{t.id}
-                    </td>
+                    <td className="rounded-l-xl border-y border-l border-line bg-black/10 px-3 py-3 font-mono text-sm">#{t.id}</td>
                     <td className="border-y border-line bg-black/10 px-3 py-3">
-                      <Link
-                        href={`/task/${t.id}`}
-                        className="text-accent hover:underline"
-                      >
-                        {t.meta.title}
-                      </Link>
+                      <Link href={`/task/${t.id}`} className="text-accent hover:underline">{t.meta.title}</Link>
                       <div className="mt-0.5 flex gap-1">
                         {t.meta.tags.slice(0, 3).map((tag: string) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted"
-                          >
-                            {tag}
-                          </span>
+                          <span key={tag} className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted">{tag}</span>
                         ))}
                       </div>
                       <div className="mt-0.5 text-[11px] text-muted">
                         发布者: <span className="font-mono">{shortAddr(t.creator)}</span>
                       </div>
                     </td>
-                    <td className="border-y border-line bg-black/10 px-3 py-3 font-mono text-sm">
-                      {formatEther(t.reward)} ETH
-                    </td>
-                    <td className="border-y border-line bg-black/10 px-3 py-3 text-xs text-muted">
-                      {fmtDeadline(t.deadline)}
-                    </td>
-                    <td className="border-y border-line bg-black/10 px-3 py-3">
-                      <StatusBadge status={t.status} />
-                    </td>
+                    <td className="border-y border-line bg-black/10 px-3 py-3 font-mono text-sm">{formatEther(t.reward)} ETH</td>
+                    <td className="border-y border-line bg-black/10 px-3 py-3 text-xs text-muted">{fmtDeadline(t.deadline)}</td>
+                    <td className="border-y border-line bg-black/10 px-3 py-3"><StatusBadge status={t.status} /></td>
                     <td className="rounded-r-xl border-y border-r border-line bg-black/10 px-3 py-3">
-                      <Link
-                        href={`/task/${t.id}`}
-                        className="rounded-lg border border-accent/35 bg-accent/10 px-2 py-1 text-xs text-white transition hover:bg-accent/20"
-                      >
+                      <Link href={`/task/${t.id}`}
+                        className="rounded-lg border border-accent/35 bg-accent/10 px-2 py-1 text-xs text-white transition hover:bg-accent/20">
                         查看
                       </Link>
                     </td>
@@ -237,23 +169,11 @@ export default function TasksPage() {
         <div className="mt-2 flex items-center justify-between text-xs text-muted">
           <span>共 {filtered.length} 个任务</span>
           <div className="flex items-center gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-line bg-card/60 px-2 py-1 disabled:opacity-40"
-            >
-              上一页
-            </button>
-            <span className="rounded-lg border border-line bg-black/15 px-2 py-1">
-              {page} / {maxPage}
-            </span>
-            <button
-              disabled={page >= maxPage}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-line bg-card/60 px-2 py-1 disabled:opacity-40"
-            >
-              下一页
-            </button>
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
+              className="rounded-lg border border-line bg-card/60 px-2 py-1 disabled:opacity-40">上一页</button>
+            <span className="rounded-lg border border-line bg-black/15 px-2 py-1">{page} / {maxPage}</span>
+            <button disabled={page >= maxPage} onClick={() => setPage((p) => p + 1)}
+              className="rounded-lg border border-line bg-card/60 px-2 py-1 disabled:opacity-40">下一页</button>
           </div>
         </div>
       </div>
@@ -265,10 +185,7 @@ export default function TasksPage() {
           { label: "进行中", value: kpi.active },
           { label: "已发奖", value: kpi.paid },
         ].map((k) => (
-          <div
-            key={k.label}
-            className="rounded-2xl border border-line bg-black/12 p-4"
-          >
+          <div key={k.label} className="rounded-2xl border border-line bg-black/12 p-4">
             <div className="text-xs text-muted">{k.label}</div>
             <div className="mt-1 text-2xl font-semibold">{k.value}</div>
           </div>
