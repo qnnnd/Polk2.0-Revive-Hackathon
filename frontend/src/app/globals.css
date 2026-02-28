@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(110, 231, 255, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(167, 139, 250, 0.16), transparent 55%),
+    #0b0d12;
+  color: #e6eaf2;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+input,
+select,
+textarea {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid #232a3d;
+  border-radius: 12px;
+  color: #e6eaf2;
+  padding: 10px 12px;
+  outline: none;
+  width: 100%;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(110, 231, 255, 0.45);
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
