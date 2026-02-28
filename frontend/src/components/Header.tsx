@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { getChainLabel, TARGET_CHAIN_ID } from "@/config/chains";
 
 const NAV = [
   { href: "/", label: "任务广场" },
@@ -17,7 +18,15 @@ function shortAddr(a: string) {
 export default function Header() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { switchChain } = useSwitchChain();
+  const { connect, connectors } = useConnect({
+    mutation: {
+      onSuccess: () => {
+        // Switch to target chain immediately after connect
+        switchChain({ chainId: TARGET_CHAIN_ID });
+      },
+    },
+  });
   const { disconnect } = useDisconnect();
 
   const handleConnect = () => {
@@ -63,7 +72,7 @@ export default function Header() {
 
       <div className="flex items-center gap-3">
         <span className="rounded-xl border border-line bg-black/15 px-3 py-2 text-xs text-muted">
-          Network: <span className="font-mono">Hardhat</span>
+          Network: <span className="font-mono">{getChainLabel(TARGET_CHAIN_ID)}</span>
         </span>
         <button
           onClick={handleConnect}

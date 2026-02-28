@@ -15,8 +15,10 @@ import {
   STATUS_LABELS,
   parseMetaURI,
 } from "@/config/contract";
+import { TARGET_CHAIN_ID } from "@/config/chains";
 import StatusBadge from "@/components/StatusBadge";
 import { useToast } from "@/components/Toast";
+import { useEnsureChain } from "@/hooks/useEnsureChain";
 import { useState } from "react";
 
 function shortAddr(a: string) {
@@ -29,6 +31,7 @@ export default function TaskDetailPage() {
   const taskId = Number(params.id);
   const { address, isConnected } = useAccount();
   const { show } = useToast();
+  const { ensureChain } = useEnsureChain();
 
   const [deliverableURI, setDeliverableURI] = useState("");
 
@@ -69,9 +72,15 @@ export default function TaskDetailPage() {
     { hour12: false }
   );
 
-  const exec = (fn: string, args: any[], value?: bigint) => {
+  const exec = async (fn: string, args: any[], value?: bigint) => {
     if (!isConnected) {
       show("请先连接钱包");
+      return;
+    }
+    try {
+      await ensureChain();
+    } catch {
+      show("请切换至目标网络");
       return;
     }
     writeContract(
@@ -80,6 +89,7 @@ export default function TaskDetailPage() {
         abi: BOUNTY_BOARD_ABI,
         functionName: fn,
         args,
+        chainId: TARGET_CHAIN_ID,
         ...(value ? { value } : {}),
       } as any,
       {

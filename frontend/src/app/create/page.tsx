@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
 import { BOUNTY_BOARD_ADDRESS, BOUNTY_BOARD_ABI } from "@/config/contract";
+import { TARGET_CHAIN_ID } from "@/config/chains";
 import { useToast } from "@/components/Toast";
+import { useEnsureChain } from "@/hooks/useEnsureChain";
 import Link from "next/link";
 
 export default function CreateTaskPage() {
   const router = useRouter();
   const { isConnected } = useAccount();
   const { show } = useToast();
+  const { ensureChain } = useEnsureChain();
 
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState("");
@@ -34,13 +37,20 @@ export default function CreateTaskPage() {
     setDeadlineHours("24");
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!isConnected) {
       show("请先连接钱包");
       return;
     }
     if (!title || !reward || !deadlineHours) {
       show("请填写标题、奖励、截止时间");
+      return;
+    }
+
+    try {
+      await ensureChain();
+    } catch (e) {
+      show("请切换至目标网络");
       return;
     }
 
@@ -64,6 +74,7 @@ export default function CreateTaskPage() {
         functionName: "createTask",
         args: [deadlineSec, meta],
         value: parseEther(reward),
+        chainId: TARGET_CHAIN_ID,
       },
       {
         onSuccess: () => show("交易已提交，等待确认..."),

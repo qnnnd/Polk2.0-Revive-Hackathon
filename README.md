@@ -17,22 +17,21 @@ repo/
 
 ### 环境要求
 
-- Node.js ≥ 18
-- pnpm ≥ 8
+- Node.js ≥ 18（自带 npm）
 
 ### 1. 安装依赖
 
 ```bash
-cd contracts && pnpm install
-cd ../frontend && pnpm install
+cd contracts && npm install
+cd ../frontend && npm install
 ```
 
 ### 2. 编译 & 测试合约
 
 ```bash
 cd contracts
-pnpm run compile        # 编译 Solidity
-pnpm run test           # 运行 42 条单元测试
+npm run compile         # 编译 Solidity
+npm run test            # 运行 42 条单元测试
 ```
 
 ### 3. 启动本地链 & 部署合约
@@ -40,18 +39,18 @@ pnpm run test           # 运行 42 条单元测试
 ```bash
 # 终端 1：启动 Hardhat 本地节点
 cd contracts
-pnpm run node
+npm run node
 
 # 终端 2：部署合约（自动写入 frontend/.env.local）
 cd contracts
-pnpm run deploy:local
+npm run deploy:local
 ```
 
 ### 4. 启动前端
 
 ```bash
 cd frontend
-pnpm run dev            # http://localhost:3000
+npm run dev             # http://localhost:3000
 ```
 
 ### 5. 连接钱包
@@ -71,6 +70,20 @@ pnpm run dev            # http://localhost:3000
 ```
 
 > ⚠️ 仅用于本地开发，切勿在主网使用此私钥。
+
+**重要**：连接钱包后，dApp 会自动将 MetaMask 切换到目标网络（本地 / 测试网 / 主网）。发布任务或认领等操作前也会确保网络正确，避免交易发往错误链。
+
+## 多环境支持（本地 / 测试网 / 主网）
+
+通过 `NEXT_PUBLIC_CHAIN_ID` 指定目标链：
+
+| 环境 | Chain ID | 说明 |
+|------|----------|------|
+| 本地 | 31337 | Hardhat Local，需先 `npm run node` + `deploy:local` |
+| 测试网 | 11155111 | Sepolia；需部署合约并设置 `NEXT_PUBLIC_CONTRACT_ADDRESS` |
+| 主网 | 1 | Ethereum Mainnet；需部署合约并设置对应 RPC 与合约地址 |
+
+参考 `frontend/.env.example` 配置不同环境的 `.env.local`。
 
 ## 合约架构
 
@@ -133,18 +146,21 @@ CHAIN_ID=31337
 PRIVATE_KEY=...
 ```
 
-### frontend/.env.local（部署脚本自动生成）
+### frontend/.env.local（部署脚本自动生成，或参考 .env.example）
 
+**本地开发（默认）：**
 ```env
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
-NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
 NEXT_PUBLIC_CHAIN_ID=31337
+NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
 ```
+
+**测试网 / 主网**：修改 `NEXT_PUBLIC_CHAIN_ID`、`NEXT_PUBLIC_RPC_URL`、`NEXT_PUBLIC_CONTRACT_ADDRESS` 为对应环境的部署地址与 RPC。
 
 ## 测试
 
 ```bash
-cd contracts && pnpm run test
+cd contracts && npm run test
 ```
 
 覆盖用例（42 条）：
