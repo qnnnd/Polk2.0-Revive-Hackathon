@@ -70,7 +70,7 @@ describe("BountyBoard", function () {
       const task = await board.getTask(0);
       expect(task.creator).to.equal(creator.address);
       expect(task.reward).to.equal(ONE_ETHER);
-      expect(task.status).to.equal(0); // Created
+      expect(task.status).to.equal(0);
       expect(task.metaURI).to.equal(META_URI);
       expect(task.worker).to.equal(ethers.ZeroAddress);
     });
@@ -104,7 +104,7 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(creator).createTask(deadline, META_URI, { value: 0 })
-      ).to.be.revertedWith("Reward required");
+      ).to.be.revertedWith("Reward must be > 0");
     });
 
     it("should revert with past deadline", async function () {
@@ -113,7 +113,7 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(creator).createTask(latest - 100, META_URI, { value: ONE_ETHER })
-      ).to.be.revertedWith("Deadline in past");
+      ).to.be.revertedWith("Deadline must be in the future");
     });
 
     it("should revert with empty metaURI", async function () {
@@ -123,7 +123,7 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(creator).createTask(deadline, "", { value: ONE_ETHER })
-      ).to.be.revertedWith("Invalid metaURI");
+      ).to.be.revertedWith("metaURI empty or too long");
     });
   });
 
@@ -134,7 +134,7 @@ describe("BountyBoard", function () {
 
       await board.connect(worker).claimTask(0);
       const task = await board.getTask(0);
-      expect(task.status).to.equal(1); // Claimed
+      expect(task.status).to.equal(1);
       expect(task.worker).to.equal(worker.address);
     });
 
@@ -150,7 +150,7 @@ describe("BountyBoard", function () {
       const { board, other } = await loadFixture(taskClaimedFixture);
 
       await expect(board.connect(other).claimTask(0)).to.be.revertedWith(
-        "Not claimable"
+        "Task is not in Created status"
       );
     });
 
@@ -159,7 +159,7 @@ describe("BountyBoard", function () {
       await time.increaseTo(deadline + 1);
 
       await expect(board.connect(worker).claimTask(0)).to.be.revertedWith(
-        "Deadline passed"
+        "Task deadline has passed"
       );
     });
 
@@ -167,7 +167,15 @@ describe("BountyBoard", function () {
       const { board, creator } = await loadFixture(taskCreatedFixture);
 
       await expect(board.connect(creator).claimTask(0)).to.be.revertedWith(
-        "Creator cannot claim"
+        "Creator cannot claim own task"
+      );
+    });
+
+    it("should revert for non-existent task", async function () {
+      const { board, worker } = await loadFixture(deployFixture);
+
+      await expect(board.connect(worker).claimTask(999)).to.be.revertedWith(
+        "Task not found"
       );
     });
   });
@@ -179,7 +187,7 @@ describe("BountyBoard", function () {
 
       await board.connect(worker).submitWork(0, DELIVERABLE_URI, DELIVERABLE_HASH);
       const task = await board.getTask(0);
-      expect(task.status).to.equal(2); // Submitted
+      expect(task.status).to.equal(2);
       expect(task.deliverableURI).to.equal(DELIVERABLE_URI);
       expect(task.deliverableHash).to.equal(DELIVERABLE_HASH);
     });
@@ -199,7 +207,7 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(worker).submitWork(0, DELIVERABLE_URI, DELIVERABLE_HASH)
-      ).to.be.revertedWith("Not submittable");
+      ).to.be.revertedWith("Task is not in Claimed status");
     });
 
     it("should revert if not the worker", async function () {
@@ -207,7 +215,7 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(other).submitWork(0, DELIVERABLE_URI, DELIVERABLE_HASH)
-      ).to.be.revertedWith("Only worker");
+      ).to.be.revertedWith("Only assigned worker can submit");
     });
 
     it("should revert if deadline passed", async function () {
@@ -216,7 +224,7 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(worker).submitWork(0, DELIVERABLE_URI, DELIVERABLE_HASH)
-      ).to.be.revertedWith("Deadline passed");
+      ).to.be.revertedWith("Task deadline has passed");
     });
 
     it("should revert with empty deliverable URI", async function () {
@@ -224,7 +232,15 @@ describe("BountyBoard", function () {
 
       await expect(
         board.connect(worker).submitWork(0, "", DELIVERABLE_HASH)
-      ).to.be.revertedWith("Invalid URI");
+      ).to.be.revertedWith("deliverableURI empty or too long");
+    });
+
+    it("should revert with zero hash", async function () {
+      const { board, worker } = await loadFixture(taskClaimedFixture);
+
+      await expect(
+        board.connect(worker).submitWork(0, DELIVERABLE_URI, ethers.ZeroHash)
+      ).to.be.revertedWith("deliverableHash must not be zero");
     });
   });
 
@@ -238,7 +254,7 @@ describe("BountyBoard", function () {
       ).to.changeEtherBalance(worker, ONE_ETHER);
 
       const task = await board.getTask(0);
-      expect(task.status).to.equal(3); // Accepted
+      expect(task.status).to.equal(3);
     });
 
     it("should emit TaskAccepted and RewardPaid events", async function () {
@@ -255,7 +271,7 @@ describe("BountyBoard", function () {
       const { board, creator } = await loadFixture(taskClaimedFixture);
 
       await expect(board.connect(creator).acceptWork(0)).to.be.revertedWith(
-        "Not acceptable"
+        "Task is not in Submitted status"
       );
     });
 
@@ -263,7 +279,7 @@ describe("BountyBoard", function () {
       const { board, worker } = await loadFixture(taskSubmittedFixture);
 
       await expect(board.connect(worker).acceptWork(0)).to.be.revertedWith(
-        "Only creator"
+        "Only task creator can accept"
       );
     });
 
@@ -272,50 +288,66 @@ describe("BountyBoard", function () {
       await board.connect(creator).acceptWork(0);
 
       await expect(board.connect(creator).acceptWork(0)).to.be.revertedWith(
-        "Not acceptable"
+        "Task is not in Submitted status"
       );
     });
   });
 
-  // ── rejectWork ──────────────────────────────────────────
+  // ── rejectWork (P2: attempt tracking) ───────────────────
   describe("rejectWork", function () {
-    it("should set status back to Claimed and clear deliverables", async function () {
+    it("should set status back to Claimed on first rejection", async function () {
       const { board, creator } = await loadFixture(taskSubmittedFixture);
 
       await board.connect(creator).rejectWork(0);
       const task = await board.getTask(0);
-      expect(task.status).to.equal(1); // Claimed
+      expect(task.status).to.equal(1);
       expect(task.deliverableURI).to.equal("");
       expect(task.deliverableHash).to.equal(ethers.ZeroHash);
       expect(task.submitAt).to.equal(0);
+      expect(await board.rejectCount(0)).to.equal(1);
     });
 
-    it("should emit WorkRejected event", async function () {
+    it("should emit WorkRejected with rejectCount", async function () {
       const { board, creator } = await loadFixture(taskSubmittedFixture);
 
       await expect(board.connect(creator).rejectWork(0))
         .to.emit(board, "WorkRejected")
-        .withArgs(0);
+        .withArgs(0, 1);
     });
 
-    it("should allow worker to resubmit after rejection", async function () {
+    it("should allow worker to resubmit after first rejection", async function () {
       const { board, creator, worker } = await loadFixture(taskSubmittedFixture);
 
       await board.connect(creator).rejectWork(0);
-      await board
-        .connect(worker)
-        .submitWork(0, "https://example.com/v2", DELIVERABLE_HASH);
+      const hash2 = ethers.keccak256(ethers.toUtf8Bytes("v2"));
+      await board.connect(worker).submitWork(0, "https://example.com/v2", hash2);
 
       const task = await board.getTask(0);
-      expect(task.status).to.equal(2); // Submitted
+      expect(task.status).to.equal(2);
       expect(task.deliverableURI).to.equal("https://example.com/v2");
+    });
+
+    it("should cancel and refund on second rejection (exceed MAX_RESUBMIT)", async function () {
+      const { board, creator, worker } = await loadFixture(taskSubmittedFixture);
+
+      await board.connect(creator).rejectWork(0);
+      const hash2 = ethers.keccak256(ethers.toUtf8Bytes("v2"));
+      await board.connect(worker).submitWork(0, "https://example.com/v2", hash2);
+
+      await expect(board.connect(creator).rejectWork(0))
+        .to.emit(board, "TaskCancelled")
+        .withArgs(0);
+
+      const task = await board.getTask(0);
+      expect(task.status).to.equal(4); // Cancelled
+      expect(await board.rejectCount(0)).to.equal(2);
     });
 
     it("should revert if not Submitted", async function () {
       const { board, creator } = await loadFixture(taskClaimedFixture);
 
       await expect(board.connect(creator).rejectWork(0)).to.be.revertedWith(
-        "Not rejectable"
+        "Task is not in Submitted status"
       );
     });
 
@@ -323,7 +355,7 @@ describe("BountyBoard", function () {
       const { board, worker } = await loadFixture(taskSubmittedFixture);
 
       await expect(board.connect(worker).rejectWork(0)).to.be.revertedWith(
-        "Only creator"
+        "Only task creator can reject"
       );
     });
   });
@@ -338,7 +370,7 @@ describe("BountyBoard", function () {
       ).to.changeEtherBalance(creator, ONE_ETHER);
 
       const task = await board.getTask(0);
-      expect(task.status).to.equal(4); // Cancelled
+      expect(task.status).to.equal(4);
     });
 
     it("should emit TaskCancelled event", async function () {
@@ -353,7 +385,7 @@ describe("BountyBoard", function () {
       const { board, creator } = await loadFixture(taskClaimedFixture);
 
       await expect(board.connect(creator).cancelTask(0)).to.be.revertedWith(
-        "Only Created"
+        "Only Created tasks can be cancelled"
       );
     });
 
@@ -361,7 +393,7 @@ describe("BountyBoard", function () {
       const { board, other } = await loadFixture(taskCreatedFixture);
 
       await expect(board.connect(other).cancelTask(0)).to.be.revertedWith(
-        "Only creator"
+        "Only task creator can cancel"
       );
     });
   });
@@ -372,33 +404,24 @@ describe("BountyBoard", function () {
       const { board, creator, deadline } = await loadFixture(taskCreatedFixture);
       await time.increaseTo(deadline + GRACE_PERIOD + 1);
 
-      await expect(board.expireTask(0)).to.changeEtherBalance(
-        creator,
-        ONE_ETHER
-      );
+      await expect(board.expireTask(0)).to.changeEtherBalance(creator, ONE_ETHER);
 
       const task = await board.getTask(0);
-      expect(task.status).to.equal(5); // Expired
+      expect(task.status).to.equal(5);
     });
 
     it("should expire a Claimed task after grace period", async function () {
       const { board, creator, deadline } = await loadFixture(taskClaimedFixture);
       await time.increaseTo(deadline + GRACE_PERIOD + 1);
 
-      await expect(board.expireTask(0)).to.changeEtherBalance(
-        creator,
-        ONE_ETHER
-      );
+      await expect(board.expireTask(0)).to.changeEtherBalance(creator, ONE_ETHER);
     });
 
     it("should expire a Submitted task after grace period", async function () {
       const { board, creator, deadline } = await loadFixture(taskSubmittedFixture);
       await time.increaseTo(deadline + GRACE_PERIOD + 1);
 
-      await expect(board.expireTask(0)).to.changeEtherBalance(
-        creator,
-        ONE_ETHER
-      );
+      await expect(board.expireTask(0)).to.changeEtherBalance(creator, ONE_ETHER);
     });
 
     it("should emit TaskExpired event", async function () {
@@ -415,7 +438,7 @@ describe("BountyBoard", function () {
       await time.increaseTo(deadline + 1);
 
       await expect(board.expireTask(0)).to.be.revertedWith(
-        "Grace period active"
+        "Grace period has not passed"
       );
     });
 
@@ -423,14 +446,18 @@ describe("BountyBoard", function () {
       const { board, creator } = await loadFixture(taskSubmittedFixture);
       await board.connect(creator).acceptWork(0);
 
-      await expect(board.expireTask(0)).to.be.revertedWith("Cannot expire");
+      await expect(board.expireTask(0)).to.be.revertedWith(
+        "Task is already in terminal status"
+      );
     });
 
     it("should revert for terminal status (Cancelled)", async function () {
       const { board, creator } = await loadFixture(taskCreatedFixture);
       await board.connect(creator).cancelTask(0);
 
-      await expect(board.expireTask(0)).to.be.revertedWith("Cannot expire");
+      await expect(board.expireTask(0)).to.be.revertedWith(
+        "Task is already in terminal status"
+      );
     });
   });
 

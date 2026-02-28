@@ -29,8 +29,10 @@ contract BountyBoard is ReentrancyGuard {
     uint256 public totalTasks;
     uint256 public gracePeriod;
     uint256 public constant MAX_URI_LENGTH = 2048;
+    uint8   public constant MAX_RESUBMIT = 1;
 
     mapping(uint256 => Task) private _tasks;
+    mapping(uint256 => uint8) public rejectCount;
 
     event TaskCreated(
         uint256 indexed taskId,
@@ -50,7 +52,12 @@ contract BountyBoard is ReentrancyGuard {
     event RewardPaid(uint256 indexed taskId, address indexed worker, uint256 amount);
     event TaskCancelled(uint256 indexed taskId);
     event TaskExpired(uint256 indexed taskId);
-    event WorkRejected(uint256 indexed taskId);
+    event WorkRejected(uint256 indexed taskId, uint8 rejectCount);
+
+    modifier validTask(uint256 taskId) {
+        require(taskId < totalTasks, "Task not found");
+        _;
+    }
 
     constructor(uint256 _gracePeriod) {
         gracePeriod = _gracePeriod;
@@ -60,10 +67,10 @@ contract BountyBoard is ReentrancyGuard {
         uint64 deadline,
         string calldata metaURI
     ) external payable returns (uint256 taskId) {
-        require(msg.value > 0, "Reward required");
-        require(deadline > block.timestamp, "Deadline in past");
+        require(msg.value > 0, "Reward must be > 0");
+        require(deadline > block.timestamp, "Deadline must be in the future");
         uint256 len = bytes(metaURI).length;
-        require(len > 0 && len <= MAX_URI_LENGTH, "Invalid metaURI");
+        require(len > 0 && len <= MAX_URI_LENGTH, "metaURI empty or too long");
 
         taskId = totalTasks++;
         Task storage t = _tasks[taskId];
@@ -77,11 +84,11 @@ contract BountyBoard is ReentrancyGuard {
         emit TaskCreated(taskId, msg.sender, msg.value, deadline, metaURI);
     }
 
-    function claimTask(uint256 taskId) external {
+    function claimTask(uint256 taskId) external validTask(taskId) {
         Task storage t = _tasks[taskId];
-        require(t.status == TaskStatus.Created, "Not claimable");
-        require(block.timestamp <= t.deadline, "Deadline passed");
-        require(msg.sender != t.creator, "Creator cannot claim");
+        require(t.status == TaskStatus.Created, "Task is not in Created status");
+        require(block.timestamp <= t.deadline, "Task deadline has passed");
+        require(msg.sender != t.creator, "Creator cannot claim own task");
 
         t.worker = msg.sender;
         t.status = TaskStatus.Claimed;
@@ -93,13 +100,14 @@ contract BountyBoard is ReentrancyGuard {
         uint256 taskId,
         string calldata deliverableURI,
         bytes32 deliverableHash
-    ) external {
+    ) external validTask(taskId) {
         Task storage t = _tasks[taskId];
-        require(t.status == TaskStatus.Claimed, "Not submittable");
-        require(msg.sender == t.worker, "Only worker");
-        require(block.timestamp <= t.deadline, "Deadline passed");
+        require(t.status == TaskStatus.Claimed, "Task is not in Claimed status");
+        require(msg.sender == t.worker, "Only assigned worker can submit");
+        require(block.timestamp <= t.deadline, "Task deadline has passed");
         uint256 len = bytes(deliverableURI).length;
-        require(len > 0 && len <= MAX_URI_LENGTH, "Invalid URI");
+        require(len > 0 && len <= MAX_URI_LENGTH, "deliverableURI empty or too long");
+        require(deliverableHash != bytes32(0), "deliverableHash must not be zero");
 
         t.deliverableURI  = deliverableURI;
         t.deliverableHash = deliverableHash;
@@ -109,10 +117,10 @@ contract BountyBoard is ReentrancyGuard {
         emit TaskSubmitted(taskId, msg.sender, deliverableURI, deliverableHash);
     }
 
-    function acceptWork(uint256 taskId) external nonReentrant {
+    function acceptWork(uint256 taskId) external nonReentrant validTask(taskId) {
         Task storage t = _tasks[taskId];
-        require(t.status == TaskStatus.Submitted, "Not acceptable");
-        require(msg.sender == t.creator, "Only creator");
+        require(t.status == TaskStatus.Submitted, "Task is not in Submitted status");
+        require(msg.sender == t.creator, "Only task creator can accept");
 
         t.status = TaskStatus.Accepted;
         uint256 amount = t.reward;
@@ -122,26 +130,36 @@ contract BountyBoard is ReentrancyGuard {
         emit RewardPaid(taskId, worker, amount);
 
         (bool ok, ) = payable(worker).call{value: amount}("");
-        require(ok, "Transfer failed");
+        require(ok, "ETH transfer to worker failed");
     }
 
-    function rejectWork(uint256 taskId) external {
+    function rejectWork(uint256 taskId) external validTask(taskId) {
         Task storage t = _tasks[taskId];
-        require(t.status == TaskStatus.Submitted, "Not rejectable");
-        require(msg.sender == t.creator, "Only creator");
+        require(t.status == TaskStatus.Submitted, "Task is not in Submitted status");
+        require(msg.sender == t.creator, "Only task creator can reject");
 
-        t.status          = TaskStatus.Claimed;
-        t.deliverableURI  = "";
-        t.deliverableHash = bytes32(0);
-        t.submitAt        = 0;
+        rejectCount[taskId]++;
 
-        emit WorkRejected(taskId);
+        if (rejectCount[taskId] > MAX_RESUBMIT) {
+            t.status = TaskStatus.Cancelled;
+            uint256 amount = t.reward;
+            address creator = t.creator;
+            emit TaskCancelled(taskId);
+            (bool ok, ) = payable(creator).call{value: amount}("");
+            require(ok, "ETH refund to creator failed");
+        } else {
+            t.status          = TaskStatus.Claimed;
+            t.deliverableURI  = "";
+            t.deliverableHash = bytes32(0);
+            t.submitAt        = 0;
+            emit WorkRejected(taskId, rejectCount[taskId]);
+        }
     }
 
-    function cancelTask(uint256 taskId) external nonReentrant {
+    function cancelTask(uint256 taskId) external nonReentrant validTask(taskId) {
         Task storage t = _tasks[taskId];
-        require(t.status == TaskStatus.Created, "Only Created");
-        require(msg.sender == t.creator, "Only creator");
+        require(t.status == TaskStatus.Created, "Only Created tasks can be cancelled");
+        require(msg.sender == t.creator, "Only task creator can cancel");
 
         t.status = TaskStatus.Cancelled;
         uint256 amount = t.reward;
@@ -150,18 +168,18 @@ contract BountyBoard is ReentrancyGuard {
         emit TaskCancelled(taskId);
 
         (bool ok, ) = payable(creator).call{value: amount}("");
-        require(ok, "Refund failed");
+        require(ok, "ETH refund to creator failed");
     }
 
-    function expireTask(uint256 taskId) external nonReentrant {
+    function expireTask(uint256 taskId) external nonReentrant validTask(taskId) {
         Task storage t = _tasks[taskId];
         require(
             t.status == TaskStatus.Created ||
             t.status == TaskStatus.Claimed ||
             t.status == TaskStatus.Submitted,
-            "Cannot expire"
+            "Task is already in terminal status"
         );
-        require(block.timestamp > t.deadline + gracePeriod, "Grace period active");
+        require(block.timestamp > t.deadline + gracePeriod, "Grace period has not passed");
 
         t.status = TaskStatus.Expired;
         uint256 amount = t.reward;
@@ -170,7 +188,7 @@ contract BountyBoard is ReentrancyGuard {
         emit TaskExpired(taskId);
 
         (bool ok, ) = payable(creator).call{value: amount}("");
-        require(ok, "Refund failed");
+        require(ok, "ETH refund to creator failed");
     }
 
     function getTask(uint256 taskId) external view returns (Task memory) {
