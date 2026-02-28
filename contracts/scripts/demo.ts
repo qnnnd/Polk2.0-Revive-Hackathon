@@ -2,7 +2,17 @@ import { ethers } from "hardhat";
 
 async function main() {
   const [creator, worker] = await ethers.getSigners();
-  const address = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+  let address = process.env.CONTRACT_ADDRESS || "";
+  if (!address) {
+    const envPath = require("path").resolve(__dirname, "../../frontend/.env.local");
+    try {
+      const envContent = require("fs").readFileSync(envPath, "utf8");
+      const match = envContent.match(/NEXT_PUBLIC_CONTRACT_ADDRESS=(.+)/);
+      if (match) address = match[1].trim();
+    } catch {}
+  }
+  if (!address) { console.error("No contract address. Run deploy first."); process.exit(1); }
 
   const board = await ethers.getContractAt("BountyBoard", address);
 

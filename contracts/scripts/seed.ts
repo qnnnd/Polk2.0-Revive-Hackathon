@@ -35,7 +35,19 @@ async function main() {
   const signers = await ethers.getSigners();
   const N = parseInt(process.env.SEED_COUNT || "20", 10);
 
-  const boardAddr = process.env.CONTRACT_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  let boardAddr = process.env.CONTRACT_ADDRESS || "";
+  if (!boardAddr) {
+    const envPath = require("path").resolve(__dirname, "../../frontend/.env.local");
+    try {
+      const envContent = require("fs").readFileSync(envPath, "utf8");
+      const match = envContent.match(/NEXT_PUBLIC_CONTRACT_ADDRESS=(.+)/);
+      if (match) boardAddr = match[1].trim();
+    } catch {}
+  }
+  if (!boardAddr) {
+    console.error("❌ No contract address. Run deploy.ts first.");
+    process.exit(1);
+  }
   const board = await ethers.getContractAt("BountyBoard", boardAddr);
 
   console.log(`🌱 Seeding ${N} tasks...\n`);
@@ -51,7 +63,9 @@ async function main() {
 
     const reward = ethers.parseEther((0.1 + Math.random() * 2).toFixed(4));
     const hoursFromNow = 24 + Math.floor(Math.random() * 72);
-    const deadline = Math.floor(Date.now() / 1000) + hoursFromNow * 3600;
+    const latestBlock = await ethers.provider.getBlock("latest");
+    const blockTs = latestBlock!.timestamp;
+    const deadline = blockTs + hoursFromNow * 3600;
 
     const tx = await board.connect(creator).createTask(deadline, meta, { value: reward });
     await tx.wait();
