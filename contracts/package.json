@@ -8,7 +8,9 @@
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:revive": "hardhat run scripts/deploy.ts --network reviveTestnet",
-    "smoke:revive": "hardhat run scripts/smoke.ts --network reviveTestnet"
+    "deploy:revive-local": "hardhat run scripts/deploy.ts --network reviveLocal",
+    "smoke:revive": "hardhat run scripts/smoke.ts --network reviveTestnet",
+    "smoke:revive-local": "hardhat run scripts/smoke.ts --network reviveLocal"
   },
   "devDependencies": {
     "hardhat": "^2.22.0",

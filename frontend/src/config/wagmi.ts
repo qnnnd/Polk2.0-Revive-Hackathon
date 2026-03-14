@@ -22,8 +22,17 @@ export const reviveTestnet: Chain = {
   },
 };
 
+export const reviveLocal: Chain = {
+  id: 1337,
+  name: "Revive Local",
+  nativeCurrency: { name: "IVE", symbol: "IVE", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["http://127.0.0.1:8545"] },
+  },
+};
+
 export const config = createConfig({
-  chains: [reviveTestnet, hardhat, sepolia, mainnet],
+  chains: [reviveTestnet, reviveLocal, hardhat, sepolia, mainnet],
   connectors: [injected()],
   storage: createStorage({
     storage:
@@ -32,6 +41,9 @@ export const config = createConfig({
   transports: {
     [reviveTestnet.id]: http(
       process.env.NEXT_PUBLIC_REVIVE_RPC_URL || "https://rpc-testnet.revive.global"
+    ),
+    [reviveLocal.id]: http(
+      process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545"
     ),
     [hardhat.id]: http(localRpcUrl),
     [sepolia.id]: http(

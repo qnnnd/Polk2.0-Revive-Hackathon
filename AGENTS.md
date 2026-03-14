@@ -7,21 +7,27 @@ Revive Bounty Board is a decentralized bounty/task platform. The repo has two ma
 - **contracts/** — Hardhat project with Solidity smart contract (`BountyBoard.sol`)
 - **frontend/** — Next.js 14 app with wagmi/viem for blockchain interaction
 
-**Must use Revive:** Functional testing and data verification are done on **Revive Testnet** (chainId 637173). The default frontend target chain is Revive.
+**Must use Revive:** For **local environment demo**, the requirement is to use the **local Revive node** (`revive-dev-node --dev` + `eth-rpc --dev`, EVM RPC at http://localhost:8545). The repo does not run Hardhat node as the "local chain" for demo; that path is optional for unit-test-only. See [docs/revive-local-node.md](docs/revive-local-node.md).
 
-### Running services (Revive Testnet — primary path)
+### Running services (local Revive node — required for "本地必须使用 Revive 本地节点")
 
-1. **Deploy contract to Revive**: `cd contracts && pnpm run deploy:revive` — requires `PRIVATE_KEY` in `contracts/.env`, writes `frontend/.env.local` with contract address and chainId 637173.
-2. **Frontend dev server**: `cd frontend && pnpm run dev` (port 3000) — connects to Revive by default.
-3. **Smoke test on Revive** (optional): `cd contracts && pnpm run smoke:revive` — full flow (create → claim → submit → accept) on Revive; requires `PRIVATE_KEY` and `PRIVATE_KEY_WORKER` with IVE test tokens.
+For **local demo** (required for "本地必须使用 Revive 本地节点"): build and run **revive-dev-node** and **eth-rpc** from Polkadot SDK (see [docs/revive-local-node.md](docs/revive-local-node.md)). Then:
 
-No local Hardhat node is needed for Revive-based functional testing.
+1. **Deploy**: `cd contracts && npm run deploy:revive-local` — writes `frontend/.env.local` with chainId 1337.
+2. **Frontend**: `cd frontend && npm run dev`; set MetaMask to Revive Local (1337, http://127.0.0.1:8545).
+3. **Smoke + data verification**: `cd contracts && npm run smoke:revive-local` — runs full flow and **verifies** on-chain data (task status, deliverableHash, reward paid, no forged data). See [docs/revive-local-node.md](docs/revive-local-node.md).
 
-### Running services (local Hardhat — unit tests / optional)
+### Running services (Revive Testnet — remote, no local node)
 
-- **Hardhat local node**: `cd contracts && pnpm run node` (port 8545)
-- **Deploy to local**: `cd contracts && pnpm run deploy:local` — writes `frontend/.env.local` for chainId 31337.
-- Frontend can target local by setting `NEXT_PUBLIC_CHAIN_ID=31337` and using the contract address from deploy:local.
+1. **Deploy**: `cd contracts && pnpm run deploy:revive` — requires `PRIVATE_KEY` in `contracts/.env`, writes `frontend/.env.local` with chainId 637173.
+2. **Frontend**: `cd frontend && pnpm run dev` — default chain is Revive Testnet.
+3. **Smoke**: `cd contracts && pnpm run smoke:revive` — full flow on testnet; requires `PRIVATE_KEY` and `PRIVATE_KEY_WORKER` with IVE.
+
+### Running services (local Hardhat — unit tests / optional, not Revive)
+
+- **Hardhat local node**: `cd contracts && pnpm run node` (port 8545) — this is **Hardhat**, not Revive; `npm run node` does **not** start revive-dev-node or eth-rpc.
+- **Deploy to local**: `cd contracts && pnpm run deploy:local` — deploys to Hardhat (chainId 31337), not to Revive local node.
+- Frontend can target local by setting `NEXT_PUBLIC_CHAIN_ID=31337` and using the contract address from deploy:local. This path does **not** satisfy "本地必须使用 Revive 本地节点".
 
 ### Testing
 
@@ -29,6 +35,7 @@ No local Hardhat node is needed for Revive-based functional testing.
 - **Frontend build check**: `cd frontend && pnpm run build`
 - **Frontend lint**: `cd frontend && pnpm run lint`
 - **Revive smoke**: `cd contracts && pnpm run smoke:revive` (after deploy:revive; validates full flow on Revive Testnet).
+- **Revive local smoke + data verification**: `cd contracts && npm run smoke:revive-local` (after revive-dev-node + eth-rpc and deploy:revive-local; asserts on-chain data).
 - **Local demo**: `cd contracts && npx hardhat run scripts/demo.ts --network localhost` (requires running Hardhat node).
 
 ### Gotchas

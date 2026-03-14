@@ -24,6 +24,14 @@ const config: HardhatUserConfig = {
         process.env.PRIVATE_KEY_WORKER,
       ].filter((k): k is string => !!k),
     },
+    reviveLocal: {
+      url: process.env.REVIVE_LOCAL_RPC_URL || "http://127.0.0.1:8545",
+      chainId: Number(process.env.REVIVE_LOCAL_CHAIN_ID) || 1337,
+      accounts: [
+        process.env.PRIVATE_KEY,
+        process.env.PRIVATE_KEY_WORKER,
+      ].filter((k): k is string => !!k),
+    },
   },
 };
 

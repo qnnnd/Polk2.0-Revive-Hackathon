@@ -15,11 +15,13 @@ repo/
 
 ## 快速开始
 
-> **必须使用 Revive**：功能测试与数据验证在 Revive Testnet（chainId 637173）上完成。详见下方 **[Revive Testnet 实测步骤](#revive-testnet-实测步骤必须使用-revive)**。
+> **本地环境演示必须使用 Revive 本地节点**：官方形态为 `revive-dev-node --dev` + `eth-rpc --dev`，EVM RPC 在 `http://localhost:8545`。本仓库的**本地演示**以该流程为准，见下方 **[本地跑 Revive 节点](#本地跑-revive-节点本地链演示--数据校验)**。  
+> 若暂不搭建本地 Revive，可改用 **[Revive Testnet](#revive-testnet-实测步骤必须使用-revive)**（远程测试网）。
 
 ### 环境要求
 
 - Node.js ≥ 18（自带 npm）
+- **本地 Revive 演示**还需：从 [Polkadot SDK](https://github.com/paritytech/polkadot-sdk) 编译的 `revive-dev-node` 与 `eth-rpc`（见 [docs/revive-local-node.md](docs/revive-local-node.md)）。
 
 ### 1. 安装依赖
 
@@ -33,47 +35,58 @@ cd ../frontend && npm install
 ```bash
 cd contracts
 npm run compile         # 编译 Solidity
-npm run test            # 运行 42 条单元测试
+npm run test            # 运行 42 条单元测试（使用 Hardhat 内置网络，不依赖外部节点）
 ```
 
-### 3. 启动本地链 & 部署合约
+### 3. 本地演示（必须使用 Revive 本地节点）
+
+本地环境演示需先启动 **Revive 本地节点**（非 Hardhat）：
+
+1. **启动 Revive 本地链**（两个终端）  
+   - 终端 1：`revive-dev-node --dev`  
+   - 终端 2：`eth-rpc --dev`（EVM RPC：`http://127.0.0.1:8545`）  
+   构建与启动步骤见 **[docs/revive-local-node.md](docs/revive-local-node.md)**。
+
+2. **配置账户**：在 `contracts/.env` 中设置 `PRIVATE_KEY`、`PRIVATE_KEY_WORKER`（两账户需在本地 Revive 上有余额，参见文档）。
+
+3. **部署合约**：
+   ```bash
+   cd contracts
+   npm run deploy:revive-local
+   ```
+   会写入 `frontend/.env.local`（chainId 1337、RPC、合约地址）。
+
+4. **启动前端**：
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   在 MetaMask 中添加 **Revive Local**（Chain ID 1337，RPC `http://127.0.0.1:8545`），连接后即可演示。
+
+5. **功能测试与数据校验**（禁止虚构数据）：
+   ```bash
+   cd contracts
+   npm run smoke:revive-local
+   ```
+   脚本会跑通创建→认领→提交→验收，并校验链上数据（状态、deliverableHash、奖励到账等）。
+
+完整说明与故障排查见 **[本地跑 Revive 节点](#本地跑-revive-节点本地链演示--数据校验)** 与 [docs/revive-local-node.md](docs/revive-local-node.md)。
+
+### 可选：仅用 Hardhat 本地链（非 Revive，仅适合单元测试/调试）
+
+若**不**做「本地必须使用 Revive」的演示，仅需本地 EVM 调试时，可使用 Hardhat 节点：
 
 ```bash
-# 终端 1：启动 Hardhat 本地节点
-cd contracts
-npm run node
+# 终端 1
+cd contracts && npm run node
 
-# 终端 2：部署合约（自动写入 frontend/.env.local）
-cd contracts
-npm run deploy:local
+# 终端 2
+cd contracts && npm run deploy:local
 ```
 
-### 4. 启动前端
+前端需设置 `NEXT_PUBLIC_CHAIN_ID=31337` 并使用上述部署得到的合约地址。此路径**不是** Revive 本地节点，不满足「本地必须使用 Revive」的评审要求。
 
-```bash
-cd frontend
-npm run dev             # http://localhost:3000
-```
-
-### 5. 连接钱包
-
-在 MetaMask 中添加 Hardhat 网络：
-
-| 参数 | 值 |
-|------|-----|
-| RPC URL | `http://127.0.0.1:8545` |
-| Chain ID | `31337` |
-| 货币符号 | `ETH` |
-
-导入 Hardhat 默认账户（测试用私钥）：
-
-```
-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-```
-
-> ⚠️ 仅用于本地开发，切勿在主网使用此私钥。
-
-**重要**：连接钱包后，dApp 会自动将 MetaMask 切换到目标网络（Revive 测试网 / 本地 / 其他）。发布任务或认领等操作前也会确保网络正确，避免交易发往错误链。
+**重要**：连接钱包后，dApp 会根据 `NEXT_PUBLIC_CHAIN_ID` 提示切换到对应网络（Revive Local / Revive Testnet / Hardhat 等）。发布或认领前请确认网络正确。
 
 ## Revive Testnet 实测步骤（必须使用 Revive）
 
@@ -120,6 +133,17 @@ pnpm run smoke:revive
 
 脚本会：创建任务 → 认领 → 提交交付物（含真实 deliverableHash）→ 验收发奖，并打印每笔交易的 `https://testnet.revive.global/tx/<hash>`。
 
+## 本地跑 Revive 节点（本地链演示 + 数据校验）
+
+若需**在本地运行 Revive 链节点**（而非连远程测试网），并完成合约部署、功能测试且**不使用虚构数据**，功能测试后**校验链上数据是否正常**，请按以下流程操作：
+
+1. **构建并启动本地 Revive**：`revive-dev-node --dev` + `eth-rpc --dev`（EVM RPC 在 127.0.0.1:8545）。
+2. **部署**：`cd contracts && npm run deploy:revive-local`（会写入 frontend/.env.local，chainId 1337）。
+3. **前端功能测试**：`cd frontend && npm run dev`，在 MetaMask 中切换到 Revive Local（1337）。
+4. **数据校验**：`cd contracts && npm run smoke:revive-local` — 自动走通创建→认领→提交→验收，并校验链上状态（任务状态、deliverableHash、奖励到账、creator/worker 一致），禁止虚构数据。
+
+完整步骤、环境要求与故障排查见 **[docs/revive-local-node.md](docs/revive-local-node.md)**。
+
 ## 多环境支持（Revive / 本地 / 测试网 / 主网）
 
 通过 `NEXT_PUBLIC_CHAIN_ID` 指定目标链（默认 637173 = Revive Testnet）：
@@ -127,6 +151,7 @@ pnpm run smoke:revive
 | 环境 | Chain ID | 说明 |
 |------|----------|------|
 | Revive 测试网 | 637173 | 默认；需先 `pnpm run deploy:revive`，再启动前端 |
+| Revive Local | 1337 | 本地 Revive 节点（revive-dev-node + eth-rpc）；见 [docs/revive-local-node.md](docs/revive-local-node.md) |
 | 本地 | 31337 | Hardhat Local，需先 `npm run node` + `deploy:local` |
 | 测试网 | 11155111 | Sepolia；需部署合约并设置 `NEXT_PUBLIC_CONTRACT_ADDRESS` |
 | 主网 | 1 | Ethereum Mainnet；需部署合约并设置对应 RPC 与合约地址 |
