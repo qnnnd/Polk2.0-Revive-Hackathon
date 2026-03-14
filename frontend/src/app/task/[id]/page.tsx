@@ -8,7 +8,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { formatEther } from "viem";
+import { formatEther, keccak256, toBytes } from "viem";
 import {
   BOUNTY_BOARD_ADDRESS,
   BOUNTY_BOARD_ABI,
@@ -206,12 +206,13 @@ export default function TaskDetailPage() {
                       show("请输入交付物链接");
                       return;
                     }
-                    const hash =
-                      "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
+                    const deliverableHash = keccak256(
+                      toBytes(deliverableURI)
+                    ) as `0x${string}`;
                     exec("submitWork", [
                       BigInt(taskId),
                       deliverableURI,
-                      hash,
+                      deliverableHash,
                     ]);
                   }}
                   disabled={isPending || isConfirming}

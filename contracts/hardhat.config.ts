@@ -16,6 +16,14 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL || "http://127.0.0.1:8545",
       chainId: Number(process.env.CHAIN_ID) || 31337,
     },
+    reviveTestnet: {
+      url: process.env.REVIVE_RPC_URL || "https://rpc-testnet.revive.global",
+      chainId: 637173,
+      accounts: [
+        process.env.PRIVATE_KEY,
+        process.env.PRIVATE_KEY_WORKER,
+      ].filter((k): k is string => !!k),
+    },
   },
 };
 
